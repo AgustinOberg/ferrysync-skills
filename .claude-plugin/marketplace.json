@@ -1,0 +1,29 @@
+{
+  "name": "ferrysync-agent-skills",
+  "owner": {
+    "name": "Agustin Oberg"
+  },
+  "metadata": {
+    "description": "Agent Skills for adopting Ferry (ferrysync), offline-first sync for TypeScript",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "ferrysync-skills",
+      "description": "Adopt Ferry end to end: build, migrate, operate, test and troubleshoot offline-first sync",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/ferrysync",
+        "./skills/ferrysync-create-app",
+        "./skills/ferrysync-migrate",
+        "./skills/ferrysync-server",
+        "./skills/ferrysync-client",
+        "./skills/ferrysync-testing",
+        "./skills/ferrysync-troubleshooting",
+        "./skills/ferrysync-security-review",
+        "./skills/ferrysync-production-readiness"
+      ]
+    }
+  ]
+}
