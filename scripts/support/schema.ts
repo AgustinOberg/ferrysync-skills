@@ -7,6 +7,7 @@ export const Task = z.object({
   projectId: z.string(),
   title: z.string(),
   done: z.boolean().default(false),
+  notes: z.string().nullable().default(null),
 });
 
 export const schema = defineSchema(
