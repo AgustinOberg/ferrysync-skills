@@ -1,15 +1,18 @@
 import { defineSchema } from 'ferrysync';
 import { z } from 'zod';
 
+/** The tasks table's Zod schema, for a block that passes it as a mirror's `fields`. */
+export const Task = z.object({
+  id: z.string(),
+  projectId: z.string(),
+  title: z.string(),
+  done: z.boolean().default(false),
+});
+
 export const schema = defineSchema(
   {
     projects: z.object({ id: z.string(), name: z.string() }),
-    tasks: z.object({
-      id: z.string(),
-      projectId: z.string(),
-      title: z.string(),
-      done: z.boolean().default(false),
-    }),
+    tasks: Task,
     drafts: z.object({ id: z.string(), text: z.string() }),
   },
   {
