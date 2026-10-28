@@ -55,7 +55,7 @@ Installing from GitHub needs this repository to be public.
 
 The skills point at Ferry's docs for the long tail instead of copying them: [`skills/ferrysync/references/docs-map.md`](skills/ferrysync/references/docs-map.md) maps every topic to its page and names the machine-readable files the docs site publishes (`llms.txt`, `llms-full.txt`).
 
-**Docs base URL: TBD.** The Ferry docs site has no deployed URL yet (`apps/docs` builds but is not hosted). Until it has one, the skills tell agents to read the Markdown under `docs/` in a Ferry checkout. When the site is deployed, change the one line `DOCS_BASE_URL` in `docs-map.md` (the linter fails if the placeholder appears anywhere else).
+**Docs base URL:** https://ferrysync.pages.dev. The skills point agents at `llms.txt` and `llms-full.txt` there, and fall back to the Markdown under `docs/` in a Ferry checkout. To move the site, change the one line `DOCS_BASE_URL` in `docs-map.md` (the linter fails if the placeholder appears anywhere else).
 
 ## Layout
 

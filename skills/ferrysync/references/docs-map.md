@@ -4,13 +4,13 @@ Ferry's docs are the source of truth. This file says where each topic lives, so 
 
 ## Where to read
 
-The docs site has no deployed URL yet (flagged in the README of this repo). Until it has one:
+The docs are published at https://ferrysync.pages.dev. Read them in this order:
 
-- **In a Ferry checkout or installed package source**, read the Markdown under `docs/` (paths below are relative to the Ferry repository root). The npm package ships `dist` and `src`, not `docs/`.
-- **When the site is deployed**, replace the placeholder base below and prefer the machine-readable files, which carry the whole docs in one fetch:
+- **On the site**, preferring the machine-readable files, which carry the whole docs in one fetch (addresses below).
+- **In a Ferry checkout**, the Markdown under `docs/` (paths in the table below are relative to the Ferry repository root). The npm package ships `dist` and `src`, not `docs/`. Use this when the site is unreachable or you need the exact revision of a checkout.
 
 ```text
-DOCS_BASE_URL            = TBD (not deployed; update this one line when it is)
+DOCS_BASE_URL                 = https://ferrysync.pages.dev
 DOCS_BASE_URL/llms.txt        index: one line per page
 DOCS_BASE_URL/llms-full.txt   every page, in full
 DOCS_BASE_URL/docs/<page>     one page
