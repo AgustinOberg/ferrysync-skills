@@ -1,0 +1,13 @@
+{
+  "name": "legacy-tasks",
+  "private": true,
+  "type": "module",
+  "scripts": { "server": "bun server/index.ts", "dev": "vite web", "check": "tsc --noEmit" },
+  "dependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "hono": "^4.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": { "@types/bun": "latest", "@types/react": "^19.0.0", "typescript": "^5.0.0", "vite": "^6.0.0" }
+}
