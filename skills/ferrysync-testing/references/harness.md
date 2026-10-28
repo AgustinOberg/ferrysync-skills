@@ -140,7 +140,7 @@ test('a task without a title is refused and rolled back', async () => {
 });
 ```
 
-Realtime with a virtual clock (without `settle()`, the laptop never asked: it shows the long poll at work; a device starts a wait at most a second after its last, so give it that second):
+Every test whose schema has shared spaces needs the `claimSpace` of your server options, or a device-created space is refused as `forbidden`. Realtime with a virtual clock (without `settle()`, the laptop never asked: it shows the long poll at work; a device starts a wait at most a second after its last, so give it that second):
 
 ```ts
 import { createTestHarness, createVirtualClock } from 'ferrysync/testing';
@@ -150,7 +150,14 @@ import { schema } from './schema';
 
 test('a change reaches another device in realtime', async () => {
   const clock = createVirtualClock();
-  const harness = createTestHarness({ schema, clock });
+  const harness = createTestHarness({
+    schema,
+    clock,
+    // Without it the project's write is `forbidden` (no members yet) and nothing ever syncs.
+    server: {
+      claimSpace: ({ table, space, row }) => table === 'projects' && space === `project:${row.id}`,
+    },
+  });
   const phone = await harness.client('alice');
   const laptop = await harness.client('alice');
   await harness.settle();

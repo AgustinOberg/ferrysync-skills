@@ -14,6 +14,8 @@ curl -s -X POST http://localhost:3000/api/sync/pull \
   -d '{"clientId":"c1","schemaVersion":1,"after":0}'
 ```
 
+A fresh database answers the pull with `{"kind":"actions","actions":[],"lastSyncId":0,"hasMore":false}` (checked against a running server).
+
 | Answer | Meaning |
 | --- | --- |
 | `404 unknown_endpoint` | Wrong path or not a `POST`. The client `url` is the mount without the endpoint |
