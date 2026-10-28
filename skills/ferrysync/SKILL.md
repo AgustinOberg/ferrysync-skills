@@ -37,7 +37,7 @@ Vocabulary and how a change travels: [vocabulary](references/vocabulary.md).
 | One user's visible data fits in memory on the device | A client needs only a slice of a huge shared dataset |
 | The data falls into clear sharing units (team, workspace, project, document) | The data is public, read-only, cacheable content: a plain fetch cache is simpler |
 
-Maturity facts to tell the user before they commit (details in [ferrysync-production-readiness](../ferrysync-production-readiness/SKILL.md)): version 0.1.0; no external security review yet; no built-in account deletion API or server metrics; on the web only one tab at a time owns the local database; D1 and Durable Objects are documented as experimental; no WebSockets (realtime is long polling).
+Maturity facts to tell the user before they commit (details in [ferrysync-production-readiness](../ferrysync-production-readiness/SKILL.md)): version 0.1.0; no external security review yet; no built-in account deletion API or server metrics; on the web only one tab at a time owns the local database; D1 and Durable Objects are unconfirmed on real Cloudflare; no WebSockets (realtime is long polling).
 
 If the app has a screen that must be server-authoritative (payments), keep that on the normal API next to Ferry. Ferry and a fetching library coexist: see [ferrysync-client](../ferrysync-client/SKILL.md).
 

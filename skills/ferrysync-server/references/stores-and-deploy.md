@@ -7,8 +7,8 @@
 | `memoryStore()` | Tests and demos only: in memory, lost on restart |
 | `sqliteStore(driver, options?)` | One server process, a file on a persistent volume |
 | `postgresStore(driver, options?)` | Production with several instances, serverless |
-| `d1Store(env.DB, options?)` | Cloudflare D1, inside one Durable Object (experimental) |
-| `sqliteStore(durableObjectSqlite(ctx.storage))` | A Durable Object's own SQLite (experimental) |
+| `d1Store(env.DB, options?)` | Cloudflare D1, inside one Durable Object (unconfirmed on real Cloudflare) |
+| `sqliteStore(durableObjectSqlite(ctx.storage))` | A Durable Object's own SQLite (unconfirmed on real Cloudflare) |
 
 | Driver | Wraps | `within` |
 | --- | --- | --- |

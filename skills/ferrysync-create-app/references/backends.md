@@ -117,7 +117,7 @@ Bun.serve({
 
 ## Cloudflare Workers with D1
 
-D1 has no transactions to read inside, so one Durable Object, the coordinator, runs the server and is the database's single writer. `d1Store` has no `mirror` and no `within`. Cloudflare support is documented as experimental: tell the user.
+D1 has no transactions to read inside, so one Durable Object, the coordinator, runs the server and is the database's single writer. `d1Store` has no `mirror` and no `within`. Cloudflare D1 and Durable Objects are unconfirmed on real Cloudflare (Ferry's roadmap): tell the user.
 
 ```ts
 // worker.ts
