@@ -1,5 +1,9 @@
 # Client tests and the harness
 
+## Which runner
+
+The examples import `vitest`, which Ferry and its examples use. A project on `bun:sqlite` (Bun's own SQLite) cannot run under Vitest on Node: use `bun test` and import `expect`, `it`, `test` and `mock` from `bun:test` (`mock()` replaces `vi.fn()`). Nothing else changes: the client, `createTestHarness`, `createVirtualClock`, `settle` and `act` behave the same (checked: a realtime test with a virtual clock and a harness over `bun:sqlite` pass under `bun test`). Inside this repo's source layout add `--conditions ferrysync-source`; with the published package no flag is needed. Do not add a runner without asking.
+
 ## A client alone
 
 No server, no device: memory storage and `local()` are the defaults. Writes apply synchronously, so most tests need no waiting.
@@ -182,6 +186,53 @@ export const harness = createTestHarness({
   server: { store: sqliteStore(nodeSqlite(new DatabaseSync(':memory:'))) },
 });
 ```
+
+## Old endpoints and Ferry clients over one server
+
+When a legacy REST API keeps running while Ferry takes over, test both against ONE server and one database. Export the Ferry options from the app (everything but `auth`, which the harness sets), run the harness on them, and build the legacy app over `harness.server`. The shipped store, mirror and hooks are what runs. This block is `no-check`: it imports `bun:sqlite` and `hono`, which the snippet checker does not have.
+
+```ts no-check
+import { defineSchema } from 'ferrysync';
+import { bunSqlite, sqliteStore } from 'ferrysync/server';
+import { createTestHarness } from 'ferrysync/testing';
+import { Database } from 'bun:sqlite';
+import { Hono } from 'hono';
+import { expect, test } from 'bun:test';
+import { z } from 'zod';
+
+const Task = z.object({ id: z.string(), title: z.string(), done: z.boolean().default(false) });
+const schema = defineSchema({ tasks: Task });
+
+// In the app: everything the Ferry server needs except `auth`.
+const ferryOptions = (db: Database) => ({
+  store: sqliteStore(bunSqlite(db), { mirror: { tasks: { table: 'tasks', fields: Task } } }),
+});
+
+test('legacy and Ferry share one server', async () => {
+  const db = new Database(':memory:');
+  db.run('CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0, deleted_at INTEGER)');
+  const harness = createTestHarness({ schema, server: ferryOptions(db) });
+  const legacy = new Hono(); // the app's old routes, written over harness.server
+  legacy.post('/api/tasks', async (c) => {
+    const { title } = await c.req.json<{ title: string }>();
+    const task = await harness.server.write({ as: { userId: 'alice' } }, (tx) => tx.tasks.create({ title }));
+    return c.json(task, 201);
+  });
+
+  const alice = await harness.client('alice');
+  const res = await legacy.request('/api/tasks', { method: 'POST', body: JSON.stringify({ title: 'old endpoint' }) });
+  expect(res.status).toBe(201);
+  await harness.settle();
+  expect(alice.tasks.where({ title: 'old endpoint' }).get()).toHaveLength(1); // old write reaches a Ferry client
+
+  const fromApp = alice.tasks.create({ title: 'ferry client' });
+  await harness.settle();
+  expect(db.query('SELECT title FROM tasks WHERE id = ?').get(fromApp.id)).toEqual({ title: 'ferry client' }); // Ferry write is in the old table
+  await harness.close();
+});
+```
+
+Notes: a legacy route must write through `harness.server.write` (or, for SQL it already ran, `log`) so devices hear about it; a raw `INSERT` is invisible to sync until `backfill`. `backfill` of a private table needs an owner, or its rows come back in `rejected` with "a private row the server creates needs an owner". A legacy write that bypasses sync is not a Ferry bug: it is the `log` and `backfill` step of [ferrysync-migrate](../../ferrysync-migrate/SKILL.md).
 
 ## Testing `auth`
 

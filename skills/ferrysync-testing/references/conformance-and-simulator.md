@@ -4,12 +4,12 @@ Use these when the user writes a piece Ferry plugs into, or wants confidence abo
 
 ## Conformance kits
 
-Each plug point has a kit that proves an implementation correct. Every case is `{ name, needs, run }`; a failure throws `ConformanceError` saying what was expected. `needs` lists optional abilities; skip cases the target lacks with `canRunStorageCase`, `canRunServerStoreCase`, `canRunProtocolCase`. Each case builds a fresh target, so cases are independent.
+Each plug point has a kit that proves an implementation correct. Every case is `{ name, needs, run }`; a failure throws `ConformanceError` saying what was expected. `needs` lists optional abilities (`reopen` and `failNextWrite` for storage, `failNextCommit` for stores); skip cases the target lacks with `canRunStorageCase`, `canRunServerStoreCase`, `canRunProtocolCase`. Each case builds a fresh target, so cases are independent.
 
 | Kit | Proves | Needs from you |
 | --- | --- | --- |
 | `storageConformanceCases` | A `StorageAdapter` (`load`, `write`, `clear`) | `create()`, and optionally `reopen()` (a new instance over the same data) and `failNextWrite()` |
-| `serverStoreConformanceCases` | A server store (a SQL driver's `sqliteStore` or `postgresStore`, or a `ServerStore`) | `create()`: a fresh, empty store each time |
+| `serverStoreConformanceCases` | A server store (a SQL driver's `sqliteStore` or `postgresStore`, or a `ServerStore`) | `create()`: a fresh, empty store each time; optionally `failNextCommit()` (makes the next transaction fail at its commit) |
 | `protocolConformanceCases` | A whole backend through a `Transport` | A `ProtocolConformanceBackend`: see `docs/internals/testing.md` and `docs/internals/server.md` |
 
 A custom storage:
@@ -76,7 +76,11 @@ for (let seed = 1; seed <= 50; seed += 1) {
 | `faults` | some of every fault | `FaultRates`, as for `faultyTransport` |
 | `transport` | `'direct'` | `'direct'`, `'http'`, `'http-subscribe'` |
 | `store` | `memoryServerStore` | A function returning a new, empty store for each run: run it on your store |
-| `clones`, `newSpaceShare`, `localShare`, `pageSize` | see docs | |
+| `clones` | `1` | Copies of a device's storage into a new device |
+| `restores`, `afterRestore` | `0`, `true` | Backup restores mid-run; `afterRestore: false` shows what skipping it costs |
+| `forgetClients`, `deleteUsers`, `oversizedShare` | `0` | Retention forgetting devices, account deletion, writes over the body limit |
+| `noticeFaults`, `readDelayMs`, `maxHeldWaitsPerUser` | none, `0`, `10` | Lost or late realtime notices, slow reads, the held-wait cap |
+| `newSpaceShare`, `localShare`, `pageSize`, `verbose` | `0.1`, `0.3`, by seed, `false` | Spaces founded offline, devices without an account, pull page size, a request trace |
 
 **A failing seed becomes a regression test**: copy the seed into a dedicated `it`, keep it forever, then fix.
 
@@ -86,4 +90,4 @@ for (let seed = 1; seed <= 50; seed += 1) {
 
 ## Engine level
 
-`createSyncEngine`, `localAuthority`, `directTransport`, `createProtocolServer` and `memoryServerStore` are the engine-level toolbox, for tests of an engine-based integration. Apps on `createSync` do not need them.
+`createSyncEngine`, `localAuthority`, `directTransport`, `createProtocolServer` and `memoryServerStore` (all from `ferrysync/engine`) are the engine-level toolbox, for tests of an engine-based integration. Apps on `createSync` do not need them.

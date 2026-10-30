@@ -93,7 +93,7 @@ await syncServer.write({ as: 'system' }, (tx) => tx.tasks.update(taskId, { done:
 
 `write` checks no auth: the endpoint decides who may call it. Reads see every space; `as` decides what may be written. Rows the server creates get UUIDv7 ids.
 
-Refusals throw `WriteRejectedError` (import from `ferrysync/server`) with `code`: `invalid` (schema, or a string with U+0000), `forbidden` (not the user's space), `exists` (create over a live id), `local_only`, or your hook's. A refused operation refuses the whole write even if the callback catches it. `update` or `delete` of a missing row resolves `false`.
+Refusals throw `WriteRejectedError` (import from `ferrysync/server`) with `code`: `invalid` (schema, a string with U+0000, or `system` creating a private row without `owner`), `forbidden` (not the user's space, or another user's `owner`), `exists` (create over a live id), `local_only`, or your hook's. A refused operation refuses the whole write even if the callback catches it. `update` or `delete` of a missing row resolves `false`.
 
 ```ts
 import { WriteRejectedError } from 'ferrysync/server';
@@ -117,4 +117,4 @@ try {
 
 - Every change to synced data goes through `write` (or an app push): a change straight in the database is not in the log.
 - The `tx` ends with the callback: using it afterwards rejects.
-- A hook that throws makes the device retry the same transaction until it goes through.
+- A hook that throws an ordinary error makes the device retry the same transaction until it goes through. Throwing a `WriteRejectedError` instead refuses the transaction with its `code`, as a returned refusal does.

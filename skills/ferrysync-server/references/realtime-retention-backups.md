@@ -57,9 +57,10 @@ A server with 2,000 devices online holds about 2,000 requests, each cheap while 
 
 ## Retention
 
-The server keeps a log of every change so devices catch up. Retention drops old log entries and stored push answers (`ferry_push_results`) older than `retention.days` (default 90; `false` keeps everything), by itself, after requests, at most hourly per instance: no cron. It drops history only: every row's current state stays, deleted rows stay as tombstones, and `ferry_clients` is not pruned today (one small row per install).
+The server keeps a log of every change so devices catch up. Retention drops old log entries and stored push answers (`ferry_push_results`) older than `retention.days` (default 90; `false` keeps everything), and forgets devices (`ferry_clients`, one small row per install) that pushed nothing for `retention.clients.days` (default 365, or `days` when longer; `clients: false` remembers every device), by itself, after requests, at most hourly per instance: no cron. It drops history only: every row's current state stays and deleted rows stay as tombstones.
 
 - A device offline longer than the retention finds its place in the log gone, downloads everything again, and keeps its pending changes. Choose `days` above how long users' devices stay offline.
+- A forgotten device that comes back gets `forgottenClient`, nothing is applied, and it settles from the server's data and sends what is left again under a new client id. Known limit: a change applied but whose answer was lost, then undone by someone during more than `clients.days` of silence, is sent again and lands as a late write (`docs/server/retention.md`).
 - A resend whose answer was pruned gets `forgotten`: the change is not applied twice, and the device settles it from the server's rows once caught up: confirmed if they show it, otherwise rolled back with `onRejected` code `forgotten` (a delete is never confirmed this way). Only what the app hears can differ.
 
 ## Backups and restore

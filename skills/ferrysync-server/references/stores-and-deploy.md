@@ -27,7 +27,7 @@ SQL store facts:
 - No string may contain U+0000 (refused as `invalid` on every store).
 - postgres.js: pass an instance without a `transform` that renames columns.
 - Never write to `ferry_*` tables.
-- Options: `prefix` (default `ferry_`, 1 to 40 lowercase letters, digits or `_`), `migrate` (default `true`), `mirror` (SQL stores only).
+- Options: `prefix` (default `ferry_`, 1 to 40 lowercase letters, digits or `_`, not starting with a digit), `migrate` (default `true`), `mirror` (SQL stores only).
 
 ## Migrations
 
@@ -44,7 +44,7 @@ writeFileSync('migrations/0007_ferry/migration.sql', `${statements.join(';\n')};
 export const store = postgresStore(nodePostgres(new Pool()), { prefix: 'ferry_', migrate: false });
 ```
 
-Each statement is idempotent. With `migrate: false` the store checks at first use that the tables match this release and fails with a message saying what to run. Read the release notes of every `ferrysync` upgrade: a release that changes the tables says what to add (version 2 added a nullable `updated_at` to `ferry_push_results`). A newer database than the release is refused (upgrade `ferrysync`); a rolled-back release cannot read a newer layout.
+Each statement is idempotent. With `migrate: false` the store checks at first use that the tables match this release and fails with a message saying what to run. Read the release notes of every `ferrysync` upgrade: a release that changes the tables says what to add (version 2 added a nullable `updated_at` to `ferry_push_results`, version 3 one to `ferry_clients`). A newer database than the release is refused (upgrade `ferrysync`); a rolled-back release cannot read a newer layout.
 
 Tables: `ferry_state`, `ferry_clients`, `ferry_memberships`, `ferry_records`, `ferry_log`, `ferry_push_results`, `ferry_meta`.
 
@@ -64,7 +64,7 @@ Tables: `ferry_state`, `ferry_clients`, `ferry_memberships`, `ferry_records`, `f
 | One server or container (VPS, Fly.io, Railway, Render) | SQLite on a persistent volume, or Postgres | A proxy in front must allow 30 s of silence (nginx's default `proxy_read_timeout` of 60 s does) |
 | Several servers behind a load balancer | Postgres | The balancer's idle timeout above 30 s; a `broadcast` |
 | Vercel (Next.js) | Postgres | `maxDuration = 60` and `waitUntil: (promise) => after(promise)` |
-| Cloudflare Workers | `d1Store` behind `durableObjectCoordinator`, or Postgres through Hyperdrive | One coordinator per D1 database, never two |
+| Cloudflare Workers | `d1Store` behind `durableObjectCoordinator`, or Postgres through Hyperdrive | One coordinator per D1 database, never two; `maxBodyBytes: 2_000_000` and `waitUntil: (promise) => ctx.waitUntil(promise)` |
 | Cloudflare Durable Objects | `sqliteStore(durableObjectSqlite(ctx.storage))` | One object per sync authority |
 | AWS Lambda | Postgres | Function timeout above 30 s (Lambda's default is 3 s). API Gateway's 29 s limit still works: devices ask for 25 s holds |
 | Bun | SQLite or Postgres | `idleTimeout: 40` (the default closes quiet requests at 10 s) |

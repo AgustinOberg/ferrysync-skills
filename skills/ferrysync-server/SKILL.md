@@ -38,15 +38,16 @@ On every push, in one database transaction, the server validates each row with t
 | `tables` | none | Per-table hooks: `validate`, `onWrite`, `afterCommit` |
 | `claimSpace` | none | Who may found a space. Required when devices create shared spaces offline |
 | `versions` | `{ min: 1, max: schema.version }` | Schema versions accepted. Older clients get `updateNeeded` |
-| `retention` | `{ days: 90 }` | `false` keeps everything. Set above how long devices stay offline |
+| `retention` | `{ days: 90 }` | `false` keeps everything. Set above how long devices stay offline. `clients: { days }` (default 365, or `days` when longer) is how long a silent device is remembered |
 | `broadcast` | `memoryBroadcast()` | Share across instances for instant realtime |
 | `waitUntil` | none | Serverless: run work after the response (`ctx.waitUntil`, Next.js `after`) |
 | `onError` | none | Always set it: failed hooks, failed publishes, a 500's cause |
-| `maxBodyBytes` | 5 MiB | `fetch` only; a framework's own parser has its own limit |
+| `maxBodyBytes` | 5 MiB | `fetch` only; a framework's own parser has its own limit. On Cloudflare set `2_000_000` (D1 and Durable Objects refuse larger values) |
 | `maxHeldWaitsPerUser` | `10` | Held `wait` requests per user and instance |
-| `now`, `scheduler`, `createId` | defaults | Tests only |
+| `metrics` | none | Where the server's numbers go (latency, held waits, rejections, log size): `docs/server/metrics.md` |
+| `now`, `scheduler`, `createId`, `monotonic`, `logSampleMs` | defaults | Tests only (`logSampleMs`: how long the log gauges reuse a reading, only with `metrics`) |
 
-The server object: `fetch`, `handle({ endpoint, body, request })`, `write`, `log`, `backfill`, `spaces`, `afterRestore`, `close`, `protocol`.
+The server object: `fetch`, `handle({ endpoint, body, request })`, `write`, `log`, `backfill`, `spaces`, `afterRestore`, `deleteUser`, `close`, `protocol`.
 
 ## Tasks
 
@@ -74,6 +75,12 @@ Rules beyond membership are `validate` hooks. Side effects after commit (email, 
 
 **Verify:** `await store.ready()` resolves; `wait` requests survive the platform's timeouts (no repeating 504 every 30 s).
 
+### Account deletion
+
+`await syncServer.deleteUser(userId)` erases the user's private rows and history, memberships and devices in one transaction; rows they wrote in shared spaces stay. Make `auth` refuse the user first (the server keeps nothing that tells them from a new user), then delete, then delete your own copies of what `records` lists, then run it again a minute later (it is idempotent: `found: false` when nothing is left). No hook runs and no device is told. `docs/server/deleting-users.md`.
+
+**Verify:** the result has `found: true`; a second call returns `found: false`; the user's devices get a `401` from `auth`.
+
 ### Realtime, retention, backups
 
 [realtime-retention-backups](references/realtime-retention-backups.md): long polling, `broadcast` with Redis or Postgres `LISTEN`/`NOTIFY`, what retention drops and `forgotten`, the restore procedure with `afterRestore`.
@@ -83,7 +90,7 @@ Rules beyond membership are `validate` hooks. Side effects after commit (email, 
 - Do not mount Ferry on an Edge runtime that cannot open the database drivers. Next.js: Node.js runtime.
 - Do not read the request body in a middleware before the route (`fetch` reads it). Use `handle` with a parsed body when the framework already parsed it.
 - Do not trust a header the client can set to carry the user into `auth`. If a middleware sets one, it must always delete the client's own copy first.
-- Do not throw from a hook to say no: return a refusal. A hook that always throws blocks that device's changes forever.
+- Do not throw from a hook to say no: return a refusal (or throw a `WriteRejectedError`, which refuses the same way). Any other throw is a transient failure: the device retries the same transaction, so a hook that always throws blocks that device's changes forever.
 - Do not call `syncServer.write` inside `validate` or `onWrite`: it deadlocks on the transaction the hook is in. Use the hook's `tx`.
 - Do not write straight to `ferry_*` tables, or to mirrored tables without `write`, `log` or an app push.
 - Do not add anyone to a `user:` space.

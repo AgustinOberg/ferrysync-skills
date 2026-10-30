@@ -40,7 +40,7 @@ Load [ferrysync](../ferrysync/SKILL.md) first. Everything runs in one process wi
 | Conflicts | Two clients edit different fields (both survive) and the same field (the later applied wins); an edit of a deleted row is rejected |
 | Offline | Writes while the backend is unreachable stay pending, survive a restart, and go out when it returns |
 | Accounts | `connect({ upload: true })` uploads local rows; `reset(local())` leaves nothing of the previous user |
-| Schema versions | A client outside `versions` reaches `updateNeeded`, keeps its writes, and syncs after the range includes it |
+| Schema versions | Server `versions: { min: 1, max: 1 }` with a schema at `version: 2`: the client reaches `updateNeeded` and keeps its write pending (`harness.settle()` throws for such a client: advance a virtual clock and assert on `status`). The harness cannot change `versions` afterwards, so "syncs once the range includes it" needs a second harness |
 | Hooks with effects | `afterCommit` fires once per applied change and never for a refused one |
 
 ## Do not
