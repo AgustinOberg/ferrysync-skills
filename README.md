@@ -1,6 +1,6 @@
 # ferrysync-skills
 
-[Agent Skills](https://agentskills.io) that let a coding agent adopt [Ferry](https://github.com/AgustinOberg/ferrysync) (`ferrysync`), offline-first sync for TypeScript, end to end: understand when it fits, wire it into a new or existing app from the schema to deploy, test it, and fix it when it misbehaves, without a human explaining it.
+[Agent Skills](https://agentskills.io) that let a coding agent adopt [Ferry](https://ferrysync.pages.dev) (`ferrysync`), offline-first sync for TypeScript, end to end: understand when it fits, wire it into a new or existing app from the schema to deploy, test it, and fix it when it misbehaves, without a human explaining it.
 
 They are plain `SKILL.md` files with `references/`, so Claude Code, Codex, Cursor, OpenCode and any other agent that supports the open format load them. Each skill loads only when its description matches the task.
 
@@ -26,9 +26,7 @@ Claude Code, as a plugin marketplace (the manifest is in [`.claude-plugin/market
 /plugin install ferrysync-skills@ferrysync-agent-skills
 ```
 
-Installing from GitHub needs this repository to be public.
-
-> **Status.** These skills describe `ferrysync` 0.1.0, which is on npm together with `@ferrysync/zustand`, `@ferrysync/jotai` and `@ferrysync/legend-state` (checked 2026-10-30). This repository itself is not published yet: it has no GitHub remote, and Ferry's own repository is private, so the install commands above work only once this one is pushed and public. Until then, install from a local clone. The skills tell the agent to check that the packages resolve (`npm view ferrysync version`) and to ask where to install from instead of guessing.
+> **Status.** These skills describe `ferrysync` 0.1.x, which is on npm together with `@ferrysync/zustand`, `@ferrysync/jotai` and `@ferrysync/legend-state`. The skills tell the agent to check that the packages resolve (`npm view ferrysync version`) and to ask where to install from instead of guessing.
 
 ## The skills
 
