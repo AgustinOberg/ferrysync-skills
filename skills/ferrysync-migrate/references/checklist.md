@@ -18,6 +18,7 @@ Tick per phase. Do not start the next phase with an open item. Say plainly which
 
 - [ ] Package exists and is installed on app and server
 - [ ] Schema compiles; `spaces` match the assessment; table names are final (they are stored and sent)
+- [ ] Table shape migration written as a script, run on a backed-up copy, with its DOWN migration ([cutover-and-rollback](cutover-and-rollback.md)); never run at server start
 - [ ] Mirror declared with `fields`; `await store.ready()` passes
 - [ ] Route mounted; curl gives 401 then 200
 - [ ] Old app unchanged
@@ -28,7 +29,9 @@ Tick per phase. Do not start the next phase with an open item. Say plainly which
 - [ ] Members loaded with `spaces.addMember`
 - [ ] Every writer of a mirrored table calls `write` or `log`
 - [ ] Counts match between the old table and Ferry
-- [ ] Harness test: old endpoint write shows on a Ferry client, and the reverse
+- [ ] Harness test over one server, legacy endpoints and Ferry clients: old endpoint write shows on a Ferry client, and the reverse ([recipe](adoption-code.md))
+- [ ] On SQLite drivers: no old code writes a mirrored table itself (there is no `log`)
+- [ ] Legacy reads filter `deleted_at IS NULL`; legacy writes moved to `write` are reviewed for the new role and `validate` checks
 
 ## Phase 3: client feature
 

@@ -30,7 +30,7 @@ Produce a written assessment with the user. The full procedure and questions are
 ## Phase 1: Ferry beside the old backend (nothing uses it yet)
 
 1. Install `ferrysync` and `zod` on the server and the app (check the package exists: see the entry skill).
-2. Write the shared Zod schema from the existing tables: string ids, only synced columns, `spaces` from the assessment, `localOnly` for device-only data.
+2. Write the shared Zod schema from the existing tables: string ids, only synced columns, `spaces` from the assessment, `localOnly` for device-only data. Check each table can be mirrored: a text or `uuid` primary key and a delete column. An integer key needs a migration, and on SQLite a table rebuild ([adoption-code](references/adoption-code.md)): write it as a script for the user to run on a backed-up copy first, and never run it at server start.
 3. Create the server over the existing database with a **mirror** into the existing tables and the existing auth, and mount it on one new route ([adoption-code](references/adoption-code.md)).
 4. Generate Ferry's tables through the project's migration tool (`syncTablesSql`, then `migrate: false`) when migrations are the only thing allowed to change the database; otherwise let the store create them.
 
@@ -39,9 +39,10 @@ Produce a written assessment with the user. The full procedure and questions are
 ## Phase 2: bring the data in and keep both writers honest
 
 1. Run `syncServer.backfill('<table>')` once per mirrored table, from a script or at deploy. It is safe to repeat. Read `rejected`: each row the schema or a hook refused is listed and written nowhere. Fix the data or the schema, then run again.
-2. Route every server-side writer of those tables through sync, or tell sync about it: `syncServer.write` for code you can change, `syncServer.log(tx, { table, id })` right after a write you cannot change (an old endpoint, a job). An admin tool, trigger or migration that writes a mirrored table without telling sync is not seen by devices, and the next sync write overwrites it.
+2. For a table in a shared space, load the members from where the old backend keeps them (`syncServer.spaces.addMember`, see [adoption-code](references/adoption-code.md)) before any device connects. Backfilled rows put rows in the space, and `claimSpace` never founds a space that has rows, so without members every write to it is `forbidden`.
+3. Route every server-side writer of those tables through sync, picking by driver first ([adoption-code](references/adoption-code.md)). With Postgres, Prisma or Drizzle: `syncServer.write` for code you can change, `syncServer.log(tx, { table, id })` right after a write you cannot change. With the SQLite drivers (`nodeSqlite`, `bunSqlite`, `betterSqlite3`, `durableObjectSqlite`) `log` does not exist: every writer of a mirrored table moves to `write`, and no old code may write the table itself. An admin tool, trigger or migration that writes a mirrored table without telling sync is not seen by devices, and the next sync write overwrites it.
 
-**Verify:** counts match: rows in the old table (not soft-deleted) equal rows Ferry holds for it. A harness test (see [ferrysync-testing](../ferrysync-testing/SKILL.md)) creates through the old endpoint and shows the change on a Ferry client, and the reverse.
+**Verify:** counts match: rows in the old table (not soft-deleted) equal `created + existing` of the backfill, and `rejected` is empty. A read-only cross-check in the database: `SELECT count(*) FROM ferry_records WHERE model = 'tasks' AND NOT deleted` (SQLite: `deleted = 0`; the prefix is `ferry_` unless the store set another). Never write to `ferry_*` tables by hand. Moving old endpoints onto `write` changes their behaviour (see [assessment](references/assessment.md)): show the user those changes. A harness test (the recipe is at the end of [adoption-code](references/adoption-code.md); see also [ferrysync-testing](../ferrysync-testing/SKILL.md)) creates through the old endpoint and shows the change on a Ferry client, and the reverse.
 
 ## Phase 3: move one feature on the client
 
@@ -67,7 +68,7 @@ Use [checklist](references/checklist.md) at the end of every phase, and again be
 - Do not migrate the whole app in one change. One feature, one flag, one rollout.
 - Do not let a database default or serial choose a synced row's id. Add a `uuid` or `text` key for synced rows, and keep an integer as a plain column if other tables point at it.
 - Do not drop `deleted_at` semantics: a sync delete sets the mirror's `deleted_at` (or `deletedAt: 'archived_at'`); the rest of the backend must filter it.
-- Do not write to mirrored tables (or `ferry_*` tables) without `write`, `log`, or an app push.
+- Do not write to mirrored tables (or `ferry_*` tables) without `write`, `log` or an app push. On SQLite drivers there is no `log`: only `write` or an app push.
 - Do not give the mirror a `NOT NULL` column without a default that the schema does not know: inserts fail.
 - Do not rely on Row Level Security: Ferry's connection does not apply it. Access is decided by `auth`, the schema's spaces and `validate`.
 - Do not keep TanStack Query, SWR or a Redux slice as a second cache over the same rows.

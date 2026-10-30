@@ -30,14 +30,16 @@ For each candidate dataset fill one row. A dataset is anything the UI reads or w
 | Owner or shared? | Decides the space function | private, or a space (`project:<id>`, `team:<id>`, `org:<id>`) |
 | Where is membership stored today? | Becomes `syncServer.spaces.addMember` calls (and `claimSpace` for spaces created on devices) | table to read, endpoint to call |
 | Read and write permission differ by role? | Membership gives read and write. Finer rules go in `validate` using `actor` | hook plan |
-| Id type | Devices create ids offline: strings (UUIDv7 via `createId()`) | `uuid`/`text` key as is, or add a column |
+| Id type | Devices create ids offline: strings (UUIDv7 via `createId()`) | `uuid`/`text` key as is, or migrate: on SQLite a table rebuild that keeps the old integer as `legacy_id` for old app versions ([adoption-code](adoption-code.md)) |
 | How are deletes done? | A sync delete sets `deleted_at` (timestamp or boolean) on the mirror row | existing column, or add one |
 | Other columns not in the schema | The mirror leaves them alone, so they need defaults | list NOT NULL without default |
 | Derived or computed columns, triggers | Triggers on mirrored tables run inside sync's transactions and must not write synced data | list them |
 | Large binary data (images, files) | Ferry rows are JSON | keep blobs in object storage, sync the URL/key |
 | Device-only data (drafts, UI state, settings) | `localOnly` | device-only |
 | Dates | JSON values only | ISO string or epoch number |
-| Who else writes this table (admin tool, jobs, other services, old app versions)? | Writes outside sync are invisible to devices and later overwritten | route through `write` or `log` |
+| Who else writes this table (admin tool, jobs, other services, old app versions)? | Writes outside sync are invisible to devices and later overwritten | route through `write` or `log` (`log` does not exist on the SQLite drivers: `write` only) |
+| Does the old API check roles on each write? | Routing an endpoint through `write` as the user enforces space membership and `validate`. If the legacy PATCH or DELETE had no role check, this is a tightening: other users who could edit a row through the old API now get `forbidden`. A decision to flag to the user, not to make | keep as is, or port the old rule, or accept the tightening |
+| Does the old code hard delete or read deleted rows? | A delete through sync sets `deleted_at` (`deletedAt: false` really deletes). Every legacy read, join, count and report must filter `deleted_at IS NULL`, and `DELETE` endpoints become soft deletes | list the queries to change |
 
 ## Step 3: identity and auth
 

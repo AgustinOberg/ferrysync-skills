@@ -102,7 +102,7 @@ export const Report = ({ projectId }: { projectId: string }) => {
 | Already Zustand and many components select from the store | `createSyncStore(sync)` from `@ferrysync/zustand`: tables by id, `status`, `ready`. Read-only: never `setState` it |
 | Already Jotai | `createSyncAtoms(sync)` from `@ferrysync/jotai`. Pass `syncAtoms.store` to every read |
 | Already Legend-State | `bindLegendState(sync, [bindTable(sync.tasks, store$.tasks)])` |
-| Redux | No adapter. Prefer `useQuery` in components. To feed an existing store, subscribe: `sync.tasks.all().subscribe((rows) => dispatch(replace(rows)))`, and keep it read-only |
+| Redux | No adapter. Prefer `useQuery` in components. To feed an existing store, `await sync.ready`, seed it with `sync.tasks.all().get()`, then subscribe: `sync.tasks.all().subscribe((rows) => dispatch(replace(rows)))` (a listener hears changes, not the current value), and keep it read-only |
 | UI-only state (open modals, selected tab) | Keep where it is. Per-device persistent settings: a `localOnly` table |
 | Persisted store (redux-persist, zustand persist) holding server rows | Remove the persistence for those rows |
 
@@ -147,7 +147,7 @@ Wait for `auth.authStateReady()` before choosing the backend (until then `curren
 | Existing tables | Point `postgresStore(nodePostgres(pool))` at the same database with `mirror` so existing queries and the dashboard keep working |
 | Storage buckets | Unchanged: sync the object key or URL |
 
-Use the direct connection string for the store (or a transaction-mode pooler with postgres.js `prepare: false`). `docs/examples/supabase.md` has the full pair of files.
+The store works on the direct connection string or through a transaction-mode pooler (Supavisor); behind one, give postgres.js `prepare: false`. `docs/examples/supabase.md` has the full pair of files, without a mirror: add `mirror` to the store for your existing tables.
 
 ## Existing Postgres with Prisma or Drizzle
 
