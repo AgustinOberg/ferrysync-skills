@@ -10,7 +10,7 @@ Copy [`fixtures/legacy-tasks`](fixtures/legacy-tasks) to a scratch directory, `b
 
 ## Operator answers (only if asked)
 
-- Where to install `ferrysync` from: the prepared tarball or path.
+- Where to install `ferrysync` from: not asked when the registry has it (`ferrysync` 0.1.0 is on npm); otherwise the prepared tarball or path.
 - Roles: "Members with the `viewer` role may read but not change tasks. The table allows `editor` only today."
 - Database: "Stay on SQLite for this app."
 - Volume: "At most a few thousand tasks per user."

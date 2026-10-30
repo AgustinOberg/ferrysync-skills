@@ -21,7 +21,7 @@ Build [`fixtures/broken-sync`](fixtures/broken-sync/README.md) from the result o
 **Outcome**
 
 - must: defect 1 diagnosed as `forbidden` from a missing `claimSpace`, fixed with a `claimSpace` that returns `true` only for the project's own row (not `() => true`).
-- must: defect 2 diagnosed from the 404 `unknown_endpoint` and `url` including the endpoint; fixed in the client.
+- must: defect 2 diagnosed from the 404 and the client `url`; fixed in the client (the prefix must match the server mount).
 - must: defect 3 diagnosed as a throwing hook that blocks the outbox; fixed by returning a refusal (`'...'` or `{ code, message }`), with a test that the write is rejected, rolled back, and later writes still sync.
 - must: every fix has a regression test that failed before.
 

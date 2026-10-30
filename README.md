@@ -28,7 +28,7 @@ Claude Code, as a plugin marketplace (the manifest is in [`.claude-plugin/market
 
 Installing from GitHub needs this repository to be public.
 
-> **Status.** Not published yet: the repository has not been pushed, and the `ferrysync` package is at 0.1.0 and was not on npm when these skills were written (`npm view ferrysync version`). The skills tell the agent to check this and ask where to install from instead of guessing.
+> **Status.** These skills describe `ferrysync` 0.1.0, which is on npm together with `@ferrysync/zustand`, `@ferrysync/jotai` and `@ferrysync/legend-state` (checked 2026-10-30). This repository itself is not published yet: it has no GitHub remote, and Ferry's own repository is private, so the install commands above work only once this one is pushed and public. Until then, install from a local clone. The skills tell the agent to check that the packages resolve (`npm view ferrysync version`) and to ask where to install from instead of guessing.
 
 ## The skills
 
@@ -42,13 +42,13 @@ Installing from GitHub needs this repository to be public.
 | [`ferrysync-testing`](skills/ferrysync-testing/SKILL.md) | writes tests: client tests, `createTestHarness`, virtual clock, components, conformance kits, the seeded simulator |
 | [`ferrysync-troubleshooting`](skills/ferrysync-troubleshooting/SKILL.md) | has a symptom: nothing syncs, a write vanished, a 401/403/413, `forbidden`, `forgotten`, `updateNeeded`, duplicates, realtime delays, Hermes pitfalls. Symptom, cause, fix, check tables |
 | [`ferrysync-security-review`](skills/ferrysync-security-review/SKILL.md) | asks for a review of auth, spaces, hooks and server writes. Review only: findings with severity, plus cross-user tests |
-| [`ferrysync-production-readiness`](skills/ferrysync-production-readiness/SKILL.md) | asks if it is ready for production, wants a go-live checklist, capacity or account deletion. Includes Ferry's known gaps, stated plainly |
+| [`ferrysync-production-readiness`](skills/ferrysync-production-readiness/SKILL.md) | asks if it is ready for production, wants a go-live checklist, capacity or account deletion. Includes Ferry's open gaps, stated plainly, and `deleteUser` |
 
 ### Why these boundaries and names
 
 - **Prefix `ferrysync-` on every skill.** Harnesses load skills into one flat namespace, so generic names such as `create-offline-first-app` or `testing` collide with other skills. The prefix also groups them. `create-offline-first-app` became `ferrysync-create-app`, and `migrate-to-offline-first` became `ferrysync-migrate`.
 - **One entry skill, then one skill per job.** The entry skill is small and routes; each other skill has a description that names its trigger phrases, so an agent loads a skill only when needed.
-- **Two skills beyond the brief.** `ferrysync-security-review` (auth, spaces and hooks are where a Ferry integration goes wrong, and a review must not edit access control) and `ferrysync-production-readiness` (Ferry is 0.1.0 and its roadmap lists real gaps, such as no account deletion API and no metrics, which an agent must surface before launch). They are separate so they load for a review or a launch, not on every task.
+- **Two skills beyond the brief.** `ferrysync-security-review` (auth, spaces and hooks are where a Ferry integration goes wrong, and a review must not edit access control) and `ferrysync-production-readiness` (Ferry is 0.1.0 and its roadmap lists real gaps, such as no external security review, no load test and no run on real Cloudflare, which an agent must surface before launch). They are separate so they load for a review or a launch, not on every task.
 - **Detail lives in `references/`**, loaded on demand, and `SKILL.md` stays short and procedural.
 
 ## What the skills do not copy: the docs

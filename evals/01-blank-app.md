@@ -19,7 +19,7 @@ Layout: `server/index.ts` exports a Hono app on `Bun.serve` with one `GET /healt
 
 ## Operator answers (only if asked)
 
-- Where to install `ferrysync` from: the tarball or path the operator prepared.
+- Where to install `ferrysync` from: not asked when the registry has it (`ferrysync` 0.1.0 is on npm). Only if `npm view ferrysync version` fails: the tarball or path the operator prepared.
 - Auth: "No login system yet. Use a fixed development user for now, and tell me what it will take to make it real."
 - Database: "Whatever is simplest; it is one server for now."
 - State library: "None."
@@ -28,7 +28,7 @@ Layout: `server/index.ts` exports a Hono app on `Bun.serve` with one `GET /healt
 
 **Process**
 
-- must: asks where to install `ferrysync` from, or reports that `npm view ferrysync version` found nothing, instead of guessing a registry or fork.
+- must: checks that `ferrysync` resolves (`npm view ferrysync version`) and installs it from the registry; if it does not resolve, asks where to install from instead of guessing a registry or fork.
 - must: states a fit check (offline, multi-device, last writer wins) before building.
 - must: starts the client on the device alone and verifies persistence before adding the server (the order in `ferrysync-create-app`).
 - should: asks about auth and database, or states its choice and the reason.
