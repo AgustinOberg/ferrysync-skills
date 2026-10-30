@@ -19,9 +19,13 @@ export const syncServer = createSyncServer({
 });
 ```
 
-Swap the store per [databases](databases.md). Then mount it:
+Swap the store per [databases](databases.md): `node:sqlite` exists on Node 22.13 or later only, so on Bun use `bunSqlite(new Database('sync.db'))` from `bun:sqlite`. `getSession` stands for the app's own session lookup: Ferry ships none. Then mount it:
 
 ## Hono (Node, Bun, Deno, Workers)
+
+```sh
+bun add hono @hono/node-server
+```
 
 ```ts
 // server.ts
@@ -36,7 +40,7 @@ app.all('/api/sync/*', (c) => syncServer.fetch(c.req.raw));
 serve({ fetch: app.fetch, port: 3000 });
 ```
 
-Other runtimes: Bun `export default { fetch: app.fetch, idleTimeout: 40 }`; Workers `export default app`; Deno `Deno.serve(app.fetch)`.
+This file runs on Node (`bunx tsx server.ts`, or compile it first). Other runtimes: Bun `export default { fetch: app.fetch, idleTimeout: 40 }` (with the `bun:sqlite` store); Workers `export default app`; Deno `Deno.serve(app.fetch)`.
 
 CORS (web app on another origin): answer preflight before the route, allowing `authorization` and `content-type`:
 
@@ -117,7 +121,7 @@ Bun.serve({
 
 ## Cloudflare Workers with D1
 
-D1 has no transactions to read inside, so one Durable Object, the coordinator, runs the server and is the database's single writer. `d1Store` has no `mirror` and no `within`. Cloudflare D1 and Durable Objects are unconfirmed on real Cloudflare (Ferry's roadmap): tell the user.
+D1 has no transactions to read inside, so one Durable Object, the coordinator, runs the server and is the database's single writer. `d1Store` has no `mirror` and no `within`. Ferry's D1 and Durable Object stores pass their kits in workerd with local D1, and have not run on real Cloudflare (Ferry's roadmap): tell the user.
 
 ```ts
 // worker.ts
@@ -139,6 +143,8 @@ export class SyncCoordinator {
       schema,
       store,
       auth: async (request) => (await getSession(request))?.userId ?? null,
+      // D1 refuses a value over about 2 MB: a bigger write gets a 413 and the device drops it.
+      maxBodyBytes: 2_000_000,
     });
     this.fetch = (request) => syncServer.fetch(request);
     // The tables and the sync-id counter, read before the first request is let in.

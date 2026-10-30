@@ -1,6 +1,6 @@
 ---
 name: ferrysync-production-readiness
-description: "Go-live checklist and honest risk list for a Ferry (ferrysync) deployment: package pinned and published, store and migrations, timeouts and proxies, shared database and broadcast for several instances, retention versus offline spans, backups with a rehearsed afterRestore, monitoring with onError and client status, schema version policy, capacity expectations, and Ferry's known gaps (no external security review, no metrics API, no account deletion API, ferry_clients growth, oversized transactions, unconfirmed D1 and Durable Objects, one tab on the web). Use when the user asks if Ferry is ready for production, wants a launch or go-live checklist, plans capacity or an on-call runbook, asks about GDPR or deleting a user, or asks what could go wrong at scale."
+description: "Go-live checklist and honest risk list for a Ferry (ferrysync) deployment: package pinned and published, store and migrations, timeouts and proxies, shared database and broadcast for several instances, retention versus offline spans, backups with a rehearsed afterRestore, monitoring with the metrics option, onError and client status, account deletion with deleteUser, schema version policy, capacity expectations, and Ferry's known gaps (no external security review, no load test, no real-device Hermes numbers, D1 and Durable Objects not yet run on real Cloudflare, one tab on the web). Use when the user asks if Ferry is ready for production, wants a launch or go-live checklist, plans capacity or an on-call runbook, asks about GDPR or deleting a user, or asks what could go wrong at scale."
 license: MIT
 metadata:
   author: AgustinOberg
@@ -33,17 +33,17 @@ Load [ferrysync](../ferrysync/SKILL.md) first. Ferry is at version 0.1.0 and its
 | Schema versions | `versions` accepts every app version in the wild; policy for raising `min`; server deployed before the app | config |
 | Errors | `onError` logs to the team's logger (hooks, publishes, 500 causes); client logs `onRejected`, `onInvalidRow`, status | code |
 | Shutdown | `SIGTERM` calls `syncServer.close()` | code |
-| Backups | A backup exists, and a restore **with `afterRestore`** was rehearsed on a copy; the runbook names who runs it | runbook |
+| Backups | A backup exists, and a restore **with `afterRestore`** was rehearsed on a copy; the runbook names who runs it and deletes deleted users again after it | runbook |
 | CORS and TLS | Exact origins; HTTPS | config |
 | Client | One client per app; foreground `syncNow()`; sign-out resets; sync status visible to users; second-tab handling on web | code |
 | Data | Counters and lists modelled as rows; no secrets in synced rows; length limits | schema |
 | Tests | Harness tests for sharing, rules, offline, accounts; the project's check passes | CI |
-| Account deletion | A procedure exists (Ferry has no API): see known gaps | runbook |
-| Monitoring | Alerts on route 5xx, p95 latency, held waits, database CPU and storage, `ferry_log` size | dashboards |
+| Account deletion | The account-deletion flow revokes `auth` first, calls `syncServer.deleteUser(userId)`, repeats it a minute later and after any restore, and clears the app's own copies: see [known-gaps](references/known-gaps.md) | runbook, code |
+| Monitoring | `metrics` is set and scraped (`ferry_request_duration_seconds`, `ferry_rejections_total`, `ferry_waits_held`, `ferry_log_entries`, `ferry_errors_total`: `docs/server/metrics.md`); alerts on route 5xx, p95 push latency, database CPU and storage | dashboards, config |
 
 ## Capacity expectations (measured by Ferry, in process, not a promise)
 
-Ferry's own benchmark page (`docs/benchmarks.md`) reports, on a laptop, about 800 `server.write` per second on Postgres 17 in Docker with 2 CPUs, about 470 single-row pushes per second, and about 7 KB of server memory per held `wait`. Its roadmap says some benchmark findings are not yet explained: waking 1,000 held waits with one write ran about 13,580 SQL statements, and a timing differs by about 50 times between a laptop and a CI runner. Do not promise numbers to the user: say these are single-instance in-process measurements, a load test with thousands of users online has not been run, and recommend one on their own infrastructure before launch.
+Ferry's own benchmark page (`docs/benchmarks.md`) reports, on a laptop, about 690 `server.write` per second and about 460 single-row pushes per second one at a time on Postgres 17 in Docker with 2 CPUs, about 1,600 pushes per second with 16 devices pushing at once (every push takes its sync ids from one counter row, so that is the ceiling until the roadmap's group commit lands), and about 7 KB of server memory per held `wait`, with one write waking 1,000 held waits in about 11 ms. Do not promise numbers to the user: say these are single-instance measurements on a laptop and on shared CI runners, a load test with thousands of users online has not been run, and recommend one on their own infrastructure before launch. Read the page itself: the numbers move between releases.
 
 Client side, opening 100,000 rows takes about 250 ms to 550 ms depending on storage, in Node: no real-device Hermes number exists yet. The dataset a user can see must fit in memory.
 

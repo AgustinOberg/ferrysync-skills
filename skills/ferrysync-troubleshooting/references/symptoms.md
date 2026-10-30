@@ -6,7 +6,7 @@ Every row ends with a check. Do not mark a symptom fixed until the check passes.
 
 | Symptom | Likely cause | Fix | Check |
 | --- | --- | --- | --- |
-| `lastError` mentions a network failure, no request reaches the server | Wrong `url`; the client `url` includes the endpoint (`/api/sync/push`) | `url` is the mount without the endpoint: `/api/sync` | Requests to `/api/sync/push` and `/pull` appear |
+| `lastError` mentions a network failure, no request reaches the server | Wrong `url` host or prefix. Also an endpoint left on `url` (`/api/sync/push`): Ferry reads only the last path segment, so that still works on a catch-all mount such as Hono's `/api/sync/*`, but it 404s where the router wants exactly one segment (Next.js `[endpoint]`) | `url` is the mount without the endpoint: `/api/sync` | Requests to `/api/sync/push` and `/pull` appear |
 | Same on a phone or emulator | `localhost` is the device itself | Android emulator `10.0.2.2`, a phone the computer's LAN IP; iOS simulator `localhost` works; allow cleartext HTTP in dev builds | `curl` from the device's network reaches the route |
 | Browser console: CORS error, preflight fails | App and API on different origins | Dev: proxy the sync path from the dev server. Prod: answer preflight before the route, allowing `authorization` and `content-type`. Ferry does not do CORS | A `POST` preflight returns 2xx |
 | `404 unknown_endpoint` | Wrong mount: Next.js needs `[endpoint]`; Express needs `app.use`, not `app.post`; Hono needs `/*` | Fix the mount | `curl -X POST <url>/pull` gives 401, not 404 |
@@ -16,7 +16,7 @@ Every row ends with a check. Do not mark a symptom fixed until the check passes.
 | Requests succeed but nothing appears on the other device | The other user is not in the space; or the table is private | `syncServer.spaces.members('project:<id>')`; check the space function | `members` lists them |
 | `store.ready()` rejects at startup with a message | A mirror's table, key or column is wrong, or `migrate: false` and the tables are not at this release's version | Do what the message says (add the column, run `syncTablesSql` statements) | `await store.ready()` resolves |
 | Server starts, all pushes 500 with `NOT NULL` violation | A mirror table has a `NOT NULL` column without a default that the schema does not know | Add a default or add the field to the schema | A push succeeds |
-| Server deleted and recreated, devices wait forever | The device synced with the old database and waits for history the new one lacks | Clear the app's local data (browser: Application, Clear site data) or `reset` | The device downloads fresh |
+| Server database deleted, recreated or restored, and devices show rows the server lacks, or miss new changes | A device whose position the new log has already passed pulls from there and skips changes; one whose position is ahead of the new log downloads everything again by itself (`mustRefetch`) | In development: clear the app's local data (browser: Application, Clear site data) or `reset`. After a production restore: the operator runs `syncServer.afterRestore({ highestSyncId })` once (ask first) | The device downloads fresh |
 
 ## Pending never reaches 0
 
@@ -24,7 +24,7 @@ Every row ends with a check. Do not mark a symptom fixed until the check passes.
 | --- | --- | --- | --- |
 | `pending` stays, `phase` `offline` | Network or 5xx loop | The row above for the actual error | `phase` returns to `idle` |
 | `pending` stays, `phase` `idle` or `syncing`, server logs a hook error | A hook that always throws: the device retries the same transaction forever and blocks its outbox | Make the hook return a refusal for "no", throw only for "try later" | The transaction is confirmed or rejected |
-| Pushes fail with 413 | A transaction bigger than `maxBodyBytes`, or a framework body limit | Split large operations into several transactions; raise the framework limit. A single transaction over the server limit keeps retrying (known gap) | The next push is 200 |
+| Pushes fail with 413 | A batch bigger than `maxBodyBytes` (5 MiB), or a proxy or framework body limit (nginx 1 MiB, Express `json` 100 kB, Fastify 1 MiB) | The client halves the batch and, if one transaction alone is refused, rolls it back and calls `onRejected` with `too_large`; the outbox keeps moving. Split bulk writes into several transactions; raise the proxy limit. On Cloudflare set `maxBodyBytes: 2_000_000` | The next push is 200 |
 | `phase` is `updateNeeded` | The app's schema `version` is outside the server's `versions` | Update the app, or include the version in `versions` | `syncNow()` then `idle` |
 | Stuck after a long time offline | Retention forgot answers; device re-bootstraps | Wait for the download; check retention vs offline spans | `lastSyncedAt` set |
 | `local()` backend, `pending` flickers | The device confirms its own writes on the next tick | Normal | |
@@ -41,6 +41,7 @@ Every row ends with a check. Do not mark a symptom fixed until the check passes.
 | Rows vanish after `removeMember` | Expected: the device drops the space's rows and its pending changes in it | | |
 | Signed out and the data is gone | `reset` wipes the device (pending writes included) | Check `pending` first; `keepLocalOnly` for device-only data | |
 | `forgotten` rejection | Offline longer than `retention.days` | Raise `days` | |
+| A device idle for a year resends everything | The server forgot the device after `retention.clients.days` (default 365): it answers `forgottenClient` and the device settles by itself | Expected; raise `clients.days` for longer-lived devices | The changes appear once on other devices |
 
 ## Visibility and permissions
 
@@ -49,7 +50,7 @@ Every row ends with a check. Do not mark a symptom fixed until the check passes.
 | Creating a project offline is `forbidden` on sync | `claimSpace` missing, or does not return `true` for the founding row | Add a `claimSpace` that returns `true` only for the row that creates the space (see ferrysync-server, auth-and-spaces) | The project syncs |
 | A space whose members left is `forbidden` forever | A space with rows but no members is never claimed again | `spaces.addMember`, or delete its rows | |
 | A task update moving `projectId` is `forbidden` | The writer must belong to both spaces | Add membership | |
-| Another user's private rows visible | Someone was added to a `user:<id>` space | Remove them; never do that | `spaces.of(userId)` |
+| Another user's private rows visible | Someone was added to a `user:<id>` space | Remove them with `removeMember`; never add anyone to another user's private space | `spaces.members('user:<id>')` is empty (a private space needs no members; `of` leaves it out) |
 | All rows appear for everyone | A space function returns the same constant for everything | Make it depend on the row | |
 
 ## Duplicates

@@ -15,6 +15,7 @@ A rejected transaction is a `200` answer with a permanent code. The device rolls
 | `local_only` | The table is `localOnly` | A write to a local-only table reached `syncServer.write` | Do not sync it, or remove it from `localOnly` |
 | `rejected` | A `validate` hook returned a bare string | Your rule | The message is yours: show it |
 | your code | A `validate` hook returned `{ code }` (`read_only`, `no_project`...) | Your rule | Handle in `onRejected` |
+| `too_large` | Raised by the device: a transaction pushed alone was refused with a 413 (the server's `maxBodyBytes`, or a proxy's limit) | A bulk write in one transaction; nginx `client_max_body_size` (1 MiB by default, under Ferry's 5 MiB) | The device rolled it back and keeps going. Split bulk writes into several transactions; raise the proxy limit |
 | `forgotten` | Raised by the device: a resend whose answer the server pruned (retention), and the rows do not show the change | The device was offline longer than `retention.days`; or the server refused it earlier, or someone changed those rows since | The device already shows what the server has. Raise `retention.days` above offline spans. A delete reports `forgotten` even if applied |
 
 Update and delete of a missing row on the client return `false` and reject nothing.
@@ -28,11 +29,12 @@ Update and delete of a missing row on the client return `false` and reject nothi
 | `forgotten` | The server processed the seq before but no longer remembers its answer: nothing applied twice; the device settles it from the rows |
 | `conflict` | Applies nothing and ends the results. Another install shares the client id and already used that seq (a copied device), or the seq comes after a gap (the server's database was restored). The client takes a new client id, renumbers its unprocessed transactions from 1 and resends. Automatic |
 
-## Pull and bootstrap kinds
+## Pull, bootstrap and push answer kinds
 
 | Kind | Meaning |
 | --- | --- |
-| `mustRefetch` | The cursor is older than the retained log, or newer than the log (the backend was restored). The client downloads everything again; pending changes are kept. Automatic |
+| `mustRefetch` | The cursor is older than the retained log, or newer than the log (the backend was restored or recreated). The client downloads everything again; pending changes are kept. Automatic |
+| `forgottenClient` (a push answer) | The server forgot this device (no push for `retention.clients.days`, default 365) and applied nothing. The device pulls, confirms the changes the data already shows, takes a new client id and sends the rest again from seq 1. Automatic. A device on an older release gets `conflict` instead |
 | `updateNeeded` | The server no longer accepts this schema version. Phase `'updateNeeded'`, `onUpdateNeeded`, writes keep queueing |
 
 ## HTTP errors (non-2xx, body `{ "error": { "code", "message" } }`)
@@ -42,12 +44,12 @@ Update and delete of a missing row on the client return `false` and reject nothi
 | 400 | `invalid_request` | Body not JSON, not a valid request; with `toNodeHandler`, a bad `Host` header | A proxy rewrote the body, or the wrong URL |
 | 401 | `unauthenticated` | `auth` returned `null` or `''` | Credentials not sent or not verified. Client calls `onUnauthorized`, retries with backoff |
 | 403 | `forbidden` | The client id belongs to another user | Sign-out must wipe: `sync.reset(local())` |
-| 404 | `unknown_endpoint` | Not a `POST` to `push`, `pull`, `bootstrap`, `wait` | Wrong mount path or method; the client `url` has no endpoint at the end |
-| 413 | `too_large` | Body over `maxBodyBytes` (5 MiB), `fetch` only | A framework parser limit may apply first (Express `json` 100 kB, Fastify `bodyLimit` 1 MiB). A single transaction larger than the limit keeps retrying and blocks the outbox behind it: a known gap, see [ferrysync-production-readiness](../../ferrysync-production-readiness/references/known-gaps.md) |
+| 404 | `unknown_endpoint` | Not a `POST`, or the last path segment is not `push`, `pull`, `bootstrap` or `wait` (a 404 from the framework's router, with no Ferry body, means the path is not mounted) | Wrong mount path or method; the client `url` is the mount, with no endpoint at the end |
+| 413 | `too_large` | Body over `maxBodyBytes` (5 MiB), `fetch` only; a proxy's own 413 has no Ferry body | A framework parser limit may apply first (Express `json` 100 kB, Fastify `bodyLimit` 1 MiB). The client halves the batch; a transaction refused alone is rolled back and `onRejected` gets `too_large` (see above) |
 | 500 | `internal` | Something failed; the cause goes to `onError`, never to the client | Read `onError` |
 | 503 | `unavailable` | The server was closed (`close()`) | Expected during deploys: devices retry |
 
-Client-side transport codes: `unexpected_status` (a proxy's 502 and similar: the status is not Ferry's), `invalid_response` (a 2xx body that fails validation: something between answered with HTML). The client treats every non-2xx as temporary and retries with backoff.
+Client-side transport codes (`SyncHttpError.code`, with `status`, exported from `ferrysync/engine`): `unexpected_status` (a proxy's 502 and similar: the status is not Ferry's), `invalid_response` (a 2xx body that fails validation: something between answered with HTML), `timeout`, `network`. The client treats every non-2xx as temporary and retries with backoff, except a push's 413 (above).
 
 ## Error classes
 

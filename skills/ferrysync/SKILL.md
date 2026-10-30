@@ -14,7 +14,7 @@ Ferry (`ferrysync` on npm) keeps an app's data on the device and syncs it in the
 ## Before you write anything
 
 1. **The docs are the source of truth.** Never invent an API, option, import path or default. When this skill and the installed package disagree, the package wins: read its types. For anything not covered here, fetch the docs index or full text: see [docs-map](references/docs-map.md).
-2. **Check the package exists.** Run `npm view ferrysync version`. Ferry 0.1.0 may not be published yet. If it is a 404, stop and ask the user where to install it from (a tarball, a git URL, a workspace path). Do not guess a registry or a fork.
+2. **Check the package exists.** Run `npm view ferrysync version`: `ferrysync` 0.1.0 is on npm, and so are `@ferrysync/zustand`, `@ferrysync/jotai` and `@ferrysync/legend-state` at 0.1.0. A scoped package may 404 for a few minutes after a publish (registry replication): retry before concluding it is missing. If it stays a 404, stop and ask the user where to install it from (a tarball, a git URL, a workspace path). Do not guess a registry or a fork.
 3. **Check what is already installed.** Read `package.json` and the lockfile for `ferrysync`, `@ferrysync/*`, `zod`, `react`, the database driver and the backend framework before choosing anything.
 4. **Use the project's package manager** (the lockfile says which) and its check command. If there is an `AGENTS.md` or `CLAUDE.md`, its rules win over this skill.
 
@@ -37,7 +37,7 @@ Vocabulary and how a change travels: [vocabulary](references/vocabulary.md).
 | One user's visible data fits in memory on the device | A client needs only a slice of a huge shared dataset |
 | The data falls into clear sharing units (team, workspace, project, document) | The data is public, read-only, cacheable content: a plain fetch cache is simpler |
 
-Maturity facts to tell the user before they commit (details in [ferrysync-production-readiness](../ferrysync-production-readiness/SKILL.md)): version 0.1.0; no external security review yet; no built-in account deletion API or server metrics; on the web only one tab at a time owns the local database; D1 and Durable Objects are unconfirmed on real Cloudflare; no WebSockets (realtime is long polling).
+Maturity facts to tell the user before they commit (details in [ferrysync-production-readiness](../ferrysync-production-readiness/SKILL.md)): version 0.1.0; no external security review yet; no load test with thousands of online users and no real-device Hermes numbers; on the web only one tab at a time owns the local database; D1 and Durable Objects pass their tests in workerd but have not run on real Cloudflare; no WebSockets (realtime is long polling). Account deletion (`syncServer.deleteUser`) and server metrics (the `metrics` option) exist.
 
 If the app has a screen that must be server-authoritative (payments), keep that on the normal API next to Ferry. Ferry and a fetching library coexist: see [ferrysync-client](../ferrysync-client/SKILL.md).
 

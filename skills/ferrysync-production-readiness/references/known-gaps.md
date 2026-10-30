@@ -1,25 +1,35 @@
 # Known gaps
 
-Snapshot from Ferry's `ROADMAP.md` and docs as of 2026-10-28 (Ferry 0.1.0). Verify against the current `ROADMAP.md` ("Road to production ready") and the installed version: items get fixed. Each row: what is open, what it means for an integration, what to do now.
+Snapshot from Ferry's `ROADMAP.md` and docs as of 2026-10-30 (Ferry 0.1.0). Verify against the current `ROADMAP.md` ("Road to production ready") and the installed version: items get fixed. Each row: what is open, what it means for an integration, what to do now.
 
 | Gap | Impact | Mitigation now |
 | --- | --- | --- |
 | **No external security review** of the server surface | Unknown vulnerabilities in the library; the roadmap puts a review before 1.0 | Run [ferrysync-security-review](../../ferrysync-security-review/SKILL.md) on the integration; keep the route behind the app's normal edge protections; say this to the user |
-| **No server metrics.** Only `onError` | Nobody can see push or pull latency, held waits, log size or rejections by code unless the app logs them | Log from `onError` and the client's `onRejected`; monitor the route and the database; a metrics API is planned (RFC first) |
-| **No account deletion API** (GDPR) | A deleted user's rows stay in `ferry_records`, the log and push results | A manual procedure: remove the user from their spaces (`spaces.removeMember`), delete their private and sole-owned rows with `syncServer.write` (rows become tombstones and the log keeps history until retention drops it), then decide with the user and counsel how long the log and tombstones may remain. Treat as a legal question: recommend human review |
-| **`ferry_clients` is not pruned** | One small row per install grows forever | Acceptable at small scale; watch the table. Pruning is planned |
-| **A transaction larger than `maxBodyBytes` retries forever** and blocks the outbox behind it | A big bulk import in one transaction can wedge a device | Split bulk writes into several transactions; keep pushes well under 5 MiB; no skip exists without a protocol change |
-| **Waking many held `wait` requests is expensive.** One write waking 1,000 waits ran about 13,580 statements in a benchmark | Many users online in one shared space could multiply load per write | Load-test your shape; prefer many small spaces; do not run thousands of users in one space without measuring |
-| **Write throughput of one space is ordered.** 16 devices writing at once are only about 1.3 times faster than one after another on Postgres in one benchmark | Hot spaces serialize | Measure; split data across spaces |
-| **No load test past thousands of online users; no realtime latency benchmark** | Capacity is unproven | Run a load test on your infrastructure first |
-| **No real-device Hermes numbers** (startup with real data) | Unknown cold-start cost on low-end phones | Measure on a device with a realistic dataset |
-| **D1 and Durable Objects are unconfirmed on real Cloudflare**: the roadmap says the docs' limits are from memory and that SQL run inside a Durable Object's async `storage.transaction()` is unverified (it plans to label both experimental in the docs; they did not carry that label when this was written) | Production use on Cloudflare is unproven | Prefer Postgres (Hyperdrive) for production, or test on the real platform first |
-| **One tab at a time on the web** (exclusive lock; sharing one database between tabs is paused work) | A second tab errors or waits | Error boundary, or `onLocked: 'wait'`; tell users |
-| **Realtime is long polling**, no WebSockets | Held requests per device; proxies must allow 30 s of silence | See the deploy checklist |
-| **Versioning policy is partly undecided** (which release number a change calls for, deprecations, storage versions of localStorage, MMKV and key-value storages) | Upgrades between 0.x releases may be breaking by policy | Pin versions; read release notes; upgrade the server first; rolling a release back is unsupported after the store tables upgraded |
+| **Write throughput is bounded by one counter.** Every push takes its sync ids from one counter row per server, held for two round trips and a flush. Measured on Postgres in Docker: about 460 pushes per second one at a time, about 1,600 with 16 devices at once. Group commit and per-group counters (a wire and schema change) are open on the roadmap | A very hot server serializes, and spaces do not scale independently | Measure your shape; do not promise numbers |
+| **A change in a space with hundreds of members wakes every member's device**, and they pull at once (the cost of a wake itself is now near zero: no SQL, about 11 ms for 1,000 held waits). The roadmap lists large shared spaces as work for after production | Many users online in one shared space multiply the pulls per write | Load-test your shape; prefer many small spaces |
+| **No load test with thousands of users online; no realtime latency benchmark.** Deferred by the project: its only infrastructure is shared CI runners | Capacity is unproven | Run a load test on your infrastructure first |
+| **No real-device Hermes numbers** (startup with real data); Tavi's migration is meant to give one | Unknown cold-start cost on low-end phones | Measure on a device with a realistic dataset |
+| **D1 and Durable Objects have not run on real Cloudflare.** Their store and protocol kits pass inside workerd with local D1 and SQLite Durable Objects (`bun run test:workerd`); D1's queries per invocation, storage caps, and latency, throughput, placement, evictions and deploys mid-request are untested, and a 500-change push is one batch of under 100 statements | Production use on Cloudflare is unproven | Prefer Postgres (Hyperdrive) for production, or run a smoke test on the real platform first; set `maxBodyBytes: 2_000_000` |
+| **One tab at a time on the web** (exclusive lock; sharing one database between tabs is built on a branch and paused) | A second tab errors or waits | Error boundary, or `onLocked: 'wait'`; tell users |
+| **Realtime is long polling**, no WebSockets (a Durable Objects broadcast is planned) | Held requests per device; proxies must allow 30 s of silence | See the deploy checklist |
+| **Versioning policy is partly undecided** (which release number a change calls for, deprecations; `docs/versioning.md` says what is not decided yet) | Upgrades between 0.x releases may be breaking by policy | Pin versions; read release notes; upgrade the server first; rolling a release back is unsupported after the store tables upgraded |
+| **A change applied, its answer lost, then undone by someone during a silence longer than `retention.clients.days` (default 365) lands as a late write** (documented limit of client pruning) | A rare resurrected edit after a very long absence | Raise `clients.days` for long-lived devices; the device otherwise settles by itself |
+| **A deleted user's devices get no protocol answer of their own**: the app's `auth` must refuse them (a 401, then `onUnauthorized` and `reset`) | A device that `auth` still lets in writes the user's data again | Revoke the account in `auth` before `deleteUser`; see `docs/server/deleting-users.md` |
 | **Last-writer-wins only** | No merging of concurrent text edits | Model the data for it, or use a CRDT for that field |
 | **No per-member read-only roles** built in | Membership gives read and write | A `validate` hook with a role lookup |
 | **Encryption at rest on the device is not described** | Rows sit in plaintext in IndexedDB or SQLite | Do not sync secrets; use platform keychains; OS-level device encryption |
+
+## Closed since the first drafts of this list
+
+Do not report these as gaps: they are in Ferry 0.1.0.
+
+| Was a gap | Now |
+| --- | --- |
+| No server metrics | `createSyncServer({ metrics })`: request latency, transactions, rejections by code, held waits, log size, retention, errors (`docs/server/metrics.md`). Off by default; you write a small adapter for Prometheus, OpenTelemetry or Datadog |
+| No account deletion API (GDPR) | `syncServer.deleteUser(userId)` erases the user's private rows, history, memberships and devices, in one transaction; rows of shared spaces stay, and so does their history until retention drops it. A legal question beyond that: recommend human review (`docs/server/deleting-users.md`) |
+| `ferry_clients` grew forever | Retention forgets a device after `retention.clients.days` (default 365); it recovers by itself (`forgottenClient`) |
+| A transaction larger than the body limit retried forever and blocked the outbox | The client halves the batch and rolls back a transaction refused alone with `onRejected` code `too_large` |
+| Waking many held waits was expensive (13,580 statements for 1,000) | A wake runs no SQL: about 11 ms for 1,000 held waits |
 
 ## Reporting to the user
 

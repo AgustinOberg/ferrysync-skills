@@ -1,6 +1,6 @@
 ---
 name: ferrysync-troubleshooting
-description: "Diagnose Ferry (ferrysync) problems from symptom to cause to fix: nothing syncs, pending never reaches zero, a write disappeared or was rolled back, rejection and HTTP codes (forbidden, invalid, exists, not_found, deleted, conflict, forgotten, rejected, updateNeeded, mustRefetch, 401, 403, 404, 413, 500), duplicates, auth failures, other users not seeing rows, realtime delay or cutoffs, StorageLockedError, version and schema mismatches, Hermes and React Native pitfalls, mirror and store startup errors. Use when the user says sync is not working, data is missing or stale, a change reverted, status is offline or updateNeeded, I get a 401, 403 or 413, rows are duplicated, or it works on web but not on the phone."
+description: "Diagnose Ferry (ferrysync) problems from symptom to cause to fix: nothing syncs, pending never reaches zero, a write disappeared or was rolled back, rejection and HTTP codes (forbidden, invalid, exists, not_found, deleted, conflict, forgotten, too_large, rejected, updateNeeded, mustRefetch, 401, 403, 404, 413, 500), duplicates, auth failures, other users not seeing rows, realtime delay or cutoffs, StorageLockedError, version and schema mismatches, Hermes and React Native pitfalls, mirror and store startup errors. Use when the user says sync is not working, data is missing or stale, a change reverted, status is offline or updateNeeded, I get a 401, 403 or 413, rows are duplicated, or it works on web but not on the phone."
 license: MIT
 metadata:
   author: AgustinOberg
@@ -32,7 +32,7 @@ sync.onStatus((status) => console.log('ferry', status.phase, `pending=${status.p
 | Symptom | First thing to check |
 | --- | --- |
 | `phase` is `offline` with a `lastError` | The network error text: wrong `url`, CORS, `localhost` on a device, 401, a proxy cutting requests |
-| `pending` stays above 0 | A push that keeps failing (hook throws, 413, 5xx), or the device is offline, or `updateNeeded` |
+| `pending` stays above 0 | A push that keeps failing (a hook that throws, a 5xx), or the device is offline, or `updateNeeded` |
 | A write appeared, then reverted | `onRejected`: the server refused it (the row was rolled back). The `code` says why: [error-codes](references/error-codes.md) |
 | Another user does not see my rows | They are not a member of the row's space, or the table has no space function (private) |
 | My create is `forbidden` | The space has no members: `claimSpace` is missing or returned `false` |

@@ -67,7 +67,7 @@ For each item: look, decide pass or finding, note the file and line.
 | Sign-out wipes | `reset` not called, or called with `keepLocalOnly` for sensitive local data | `sync.reset(local())` (check `pending` first); `keepLocalOnly` only for harmless device data |
 | One user per device | Two accounts on one install without a wipe: the second gets `403` | Sign-out resets; do not catch the 403 and retry as another user |
 | Account switching | `connect` with `upload: true` for a different person's anonymous data | Ask "keep the data on this device?" |
-| Deleted users | Ferry has no account deletion API; a deleted user's rows stay in `ferry_records`, the log and push results | Needs a manual procedure: see [ferrysync-production-readiness](../../ferrysync-production-readiness/references/known-gaps.md) |
+| Deleted users | The account is deleted in the app's auth, but `syncServer.deleteUser` is not called: the user's private rows, log entries, memberships and devices stay in `ferry_*`. Or `deleteUser` runs while `auth` still lets the user in, so a device writes the data again | Revoke `auth` first, then `deleteUser`, again a minute later and after any restore (`docs/server/deleting-users.md`). Rows of shared spaces stay by design: see [ferrysync-production-readiness](../../ferrysync-production-readiness/references/known-gaps.md) |
 
 ## Tests that prove the boundaries
 

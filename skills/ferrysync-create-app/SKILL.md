@@ -75,7 +75,7 @@ Put it in a file both the app and the server import, with no side effects and no
 
 ### 3. Start on the device alone
 
-Install, then create the client with a storage and no `backend` (it runs on `local()`), and put the data on screen. The platform recipe has the exact files. This step must work with the server absent: that is the point of the order.
+Install `ferrysync` and `zod` (published on npm, 0.1.0), then create the client with a storage and no `backend` (it runs on `local()`), and put the data on screen. The platform recipe has the exact files. This step must work with the server absent: that is the point of the order.
 
 **Verify:** create rows, reload or restart the app: they persist. Turn the network off: nothing changes.
 
@@ -114,7 +114,7 @@ Run the project's type check, lint, format and tests, plus the harness test you 
 - Do not create the client inside a component or per render. One client per app, at module level, in its own module (Fast Refresh re-runs a module you edit: reload the app after editing it).
 - Do not write in render. Write in event handlers and effects.
 - Do not read through `fetch` what Ferry already holds.
-- Do not delete the server's database in development without clearing the app's local data (browser: Application, Clear site data): the device waits for history the new database lacks.
+- Do not delete the server's database in development without clearing the app's local data (browser: Application, Clear site data). A device whose position is ahead of the new, empty log downloads everything again by itself, but one whose position the new log has already passed skips changes and keeps rows the server no longer has.
 
 ## References
 
